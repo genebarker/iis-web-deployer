@@ -17,8 +17,9 @@ from email.mime.text import MIMEText
 #---
 # set globals
 #---
-version_number = '1.0'
+version_number = '1.0a'
 config_filename = 'Web.config'
+smtp_server = 'smtp.test.com'
 program_name = os.path.basename(__file__)
 server_name = socket.getfqdn()
 
@@ -126,7 +127,7 @@ deployment report
 	msg['Subject'] = subject_text
 	msg['From'] = sender
 	msg['To'] = ','.join(e for e in args.address)
-	s = smtplib.SMTP('relay.wyo.gov')
+	s = smtplib.SMTP(smtp_server)
 	s.sendmail(sender, args.address, msg.as_string())
 	s.quit	
 

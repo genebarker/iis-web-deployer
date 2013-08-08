@@ -17,7 +17,7 @@ from email.mime.text import MIMEText
 #---
 # set globals
 #---
-version_number = '1.0a'
+version_number = '1.1'
 config_filename = 'Web.config'
 smtp_server = 'smtp.test.com'
 program_name = os.path.basename(__file__)
@@ -42,14 +42,15 @@ parser = argparse.ArgumentParser(prog=program_name,
 										notes: Git's bin and IIS's inetsrv folders must be in
 										the command path. --path must point to a Git repository
 										with its connection to the remote (shared) repository
-										setup.
+										setup. Be sure to set HOME=%USERPROFILE% so that Git can
+										find the user's .ssh folder.
 									 ''')
 parser.add_argument('-w', '--website', required=True, help='IIS website name')
 parser.add_argument('-p', '--path', required=True, help='physical path for website')
 parser.add_argument('-c', '--config', help='source website config file to be copied to ' + config_filename)
 parser.add_argument('-b', '--branch', required=True, help='branch in repository to deploy to website')
-parser.add_argument('-u', '--user', required=True, help='user performing this deployment')
 parser.add_argument('-a', '--address', nargs='+', help='email results to specified addresses')
+parser.add_argument('-u', '--user', help='user performing this deployment')
 parser.add_argument('-v', '--version', action='version', version=program_name + ' ' + version_number)
 args = parser.parse_args()
 
@@ -57,11 +58,14 @@ args = parser.parse_args()
 # context validate arguments
 #---
 if args.address:
-	for e in args.address:
-		if not valid_email(e):
-			print 'ERROR: (' + e + ') is not a valid email address.'
-			exit()
-
+	if args.user:
+		for e in args.address:
+			if not valid_email(e):
+				print 'error: argument -a/--address: bad email address (' + e + ')'
+				sys.exit(1)
+	else:
+		print 'error: argument -u/--user is required when argument -a/--address used'
+		sys.exit(1)
 #---
 # perform deployment process
 #---
@@ -129,7 +133,7 @@ deployment report
 	msg['To'] = ','.join(e for e in args.address)
 	s = smtplib.SMTP(smtp_server)
 	s.sendmail(sender, args.address, msg.as_string())
-	s.quit	
+	s.quit
 
 if deployment_error:
 	sys.exit(1)

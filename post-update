@@ -7,5 +7,13 @@ do
 	then
 		AUTHOR_NAME=$(git log -1 --format=%aN --branches dev)
 		winrs -r:mydevserver python -u iis-web-deployer.py -w mysite -p c:\\inetpub\\wwwroot\\mysite -c Web-DEV.config -b dev -u "$AUTHOR_NAME" -a dude1@test.com dude2@test.com dude3@test.com
+	elif [ "$arg" = "refs/heads/test" ]
+	then
+		AUTHOR_NAME=$(git log -1 --format=%aN --branches test)
+		winrs -r:mytestserver python -u iis-web-deployer.py -w mysite -p c:\\inetpub\\wwwroot\\mysite -c Web-TEST.config -b test -u "$AUTHOR_NAME" -a dude1@test.com dude2@test.com dude3@test.com
+	elif [ "$arg" = "refs/heads/prod" ]
+	then
+		AUTHOR_NAME=$(git log -1 --format=%aN --branches prod)
+		winrs -r:myprodserver python -u iis-web-deployer.py -w mysite -p c:\\inetpub\\wwwroot\\mysite -c Web-PROD.config -b prod -u "$AUTHOR_NAME" -a dude1@test.com dude2@test.com dude3@test.com
 	fi
 done

@@ -17,9 +17,8 @@ from email.mime.text import MIMEText
 #---
 # set globals
 #---
-version_number = '1.1'
+version_number = '1.2'
 config_filename = 'Web.config'
-smtp_server = 'smtp.test.com'
 program_name = os.path.basename(__file__)
 server_name = socket.getfqdn()
 
@@ -49,8 +48,9 @@ parser.add_argument('-w', '--website', required=True, help='IIS website name')
 parser.add_argument('-p', '--path', required=True, help='physical path for website')
 parser.add_argument('-c', '--config', help='source website config file to be copied to ' + config_filename)
 parser.add_argument('-b', '--branch', required=True, help='branch in repository to deploy to website')
-parser.add_argument('-a', '--address', nargs='+', help='email results to specified addresses')
 parser.add_argument('-u', '--user', help='user performing this deployment')
+parser.add_argument('-m', '--smtp', help='email server hostname')
+parser.add_argument('-a', '--address', nargs='+', help='email results to specified addresses')
 parser.add_argument('-v', '--version', action='version', version=program_name + ' ' + version_number)
 args = parser.parse_args()
 
@@ -58,14 +58,18 @@ args = parser.parse_args()
 # context validate arguments
 #---
 if args.address:
-	if args.user:
-		for e in args.address:
-			if not valid_email(e):
-				print 'error: argument -a/--address: bad email address (' + e + ')'
-				sys.exit(1)
-	else:
+	if not args.user:
 		print 'error: argument -u/--user is required when argument -a/--address used'
 		sys.exit(1)
+	if not args.smtp:
+		print 'error: argument -s/--smtp is required when argument -a/--address used'
+		sys.exit(1)
+
+	for e in args.address:
+		if not valid_email(e):
+			print 'error: argument -a/--address: bad email address (' + e + ')'
+			sys.exit(1)
+
 #---
 # perform deployment process
 #---
@@ -80,23 +84,26 @@ try:
 	print '- Execute step 2: stop website in IIS'
 	subprocess.check_call('appcmd stop site /site.name:' + args.website)
 
-	print '- Execute step 3: checkout branch of Git repository'
+	print '- Execute step 3: get latest files from the remote repository'
+	subprocess.check_call('git fetch origin')
+
+	print '- Execute step 4: checkout local branch of repository'
 	subprocess.check_call('git checkout ' + args.branch)
 
-	print '- Execute step 4: discard any local changes'
+	print '- Execute step 5: discard any local changes in file system'
 	subprocess.check_call('git reset --hard')
 	if args.config and os.path.isfile(config_filename):
 		os.remove(config_filename)
 
-	print '- Execute step 5: get latest files from the remote repository'
-	subprocess.check_call('git pull origin ' + args.branch)
+	print '- Execute step 6: merge in latest files'
+	subprocess.check_call('git merge origin/' + args.branch)
 	branch_loaded = True
 
-	print '- Execute step 6: install config file'
+	print '- Execute step 7: install config file'
 	if args.config:
 		shutil.copyfile(args.config, config_filename)
 
-	print '- Execute step 7: start website in IIS'
+	print '- Execute step 8: start website in IIS'
 	subprocess.check_call('appcmd start site /site.name:' + args.website)
 
 	print '- Deployment process COMPLETED without error'
@@ -131,7 +138,7 @@ deployment report
 	msg['Subject'] = subject_text
 	msg['From'] = sender
 	msg['To'] = ','.join(e for e in args.address)
-	s = smtplib.SMTP(smtp_server)
+	s = smtplib.SMTP(args.smtp)
 	s.sendmail(sender, args.address, msg.as_string())
 	s.quit
 
